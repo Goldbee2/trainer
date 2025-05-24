@@ -1,3 +1,2 @@
-Ollama/ollama/id_ed25519
-Ollama/ollama/id_ed25519.pub
-
+# this folder will be created on docker run/model create, and should persist to avoid repeated builds of the model. It should not be uploaded to github.
+Ollama/*
