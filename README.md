@@ -31,7 +31,7 @@ I settled on Gemma3 for the initial version of the project. I experimented with 
 
 Next I want to experiment further with optimized system prompts, and begin exploring LoRA fine-tuning, RAG or CAG,
 
-#### Sunday, May 25 -- 
+#### Sunday, May 25 -- Data retrieval and handling large compressed data
 I started todays session thinking about LoRA fine-tuning to generate adapters. I planned to try to process reddit posts into Q&A data to feed into an adapter. However, the data I was interested in (the r/climbharder subreddit, which contains a lot of high quality discussion of sports medicine as it pertains to climbing) seemed to be in more of a discussion format, with few of the highest-voted posts being user questions. So instead, I am looking into RAG.
 
 Step 1 - Retrieving data
@@ -50,25 +50,28 @@ I want:
 
 I ended up parsing the zst-compressed ndjs line-by-line using a modified version of a script from [here](https://github.com/Watchful1/PushshiftDumps/blob/master/scripts).
 
-#### Monday, May 26 --
-Today I started by continuing my RAG pre-processing task. I modified the script to remove unneeded fields 
+#### Monday, May 26 -- Filtering, cleaning, and combining data
+Today I started by continuing my RAG pre-processing task. I modified the script to remove unneeded fields, combine posts/comments, and filter out results which were too low scoring or too short to contain useful information. I began researching the splitting and storing process, focusing on how to use langchain.
+
+#### Tuesday, May 27 --
+The next three steps I'll be focusing on are:
+- Load - Now that I've cleaned the data, I'll need to load it into a document loader
+- Split - I need to split my posts/comments into smaller chunks, to make indexing and retrieval easier 
+- Store - I need to store my splits somewhere. Vector database?
 
 
-# Thinks I want to learn more about
-*This ongoing list is here to keep track of concepts I want to explore more. Since I am largely new to personally interacting with LLMs, there are a number of things I have next to no knowledge about but am curious about. A checkbox indicates I have done some amount of research into a topic, but does not connote expertise of any degree*
 
-[x] The various layers of an LLM
-[ ] Embedding layer
-[ ] Recurrent layer
-[ ] Feedforward layer
-[ ] Attention layer
 
-# Resources used
+### Resources used
+
 1. Ollama
 2. Open WebUI
-2. Reddit.com/r/datasets
+3. Reddit.com/r/datasets
 4. https://www.reddit.com/r/pushshift/comments/1itme1k/separate_dump_files_for_the_top_40k_subreddits/
 5. https://academictorrents.com/details/1614740ac8c94505e4ecb9d88be8bed7b6afddd4/tech&filelist=1
-5. https://github.com/Watchful1/PushshiftDumps/blob/master/scripts/filter_file.py
-6. https://github.com/Watchful1/PushshiftDumps/blob/master/scripts/single_file.py
-5. A survey of datasets in medicine for large language models, Zhang, Xue, et al.
+6. https://github.com/Watchful1/PushshiftDumps/blob/master/scripts/filter_file.py
+7. https://github.com/Watchful1/PushshiftDumps/blob/master/scripts/single_file.py
+8. A survey of datasets in medicine for large language models, Zhang, Xue, et al.
+9. https://python.langchain.com/docs/tutorials/rag/
+10. https://python.langchain.com/docs/tutorials/rag/
+11. https://chunkviz.up.railway.app/
