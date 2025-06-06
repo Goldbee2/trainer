@@ -1,0 +1,112 @@
+---
+description: 
+globs: *.tsx
+alwaysApply: false
+---
+# React useEffect Best Practices
+
+## When NOT to Use useEffect
+
+### ❌ Don't use Effects to transform data for rendering
+```jsx
+// 🔴 Avoid: redundant state and unnecessary Effect
+const [fullName, setFullName] = useState('');
+useEffect(() => {
+  setFullName(firstName + ' ' + lastName);
+}, [firstName, lastName]);
+
+// ✅ Good: calculated during rendering
+const fullName = firstName + ' ' + lastName;
+```
+
+### ❌ Don't use Effects to handle user events
+```jsx
+// 🔴 Avoid: handling user events in Effects
+useEffect(() => {
+  if (shouldSubmit) {
+    fetch('/api/submit', { method: 'POST', body: data });
+  }
+}, [shouldSubmit, data]);
+
+// ✅ Good: handle in event handlers
+function handleSubmit() {
+  fetch('/api/submit', { method: 'POST', body: data });
+}
+```
+
+## When TO Use useEffect
+
+### ✅ Do use Effects to synchronize with external systems
+- DOM manipulation
+- Network requests (data fetching)
+- Setting up subscriptions
+- Timers and intervals
+- Third-party widget integration
+
+## Performance Optimizations
+
+### Use useMemo for expensive calculations
+```jsx
+// ✅ Cache expensive calculations with useMemo
+const visibleTodos = useMemo(() => 
+  getFilteredTodos(todos, filter), 
+  [todos, filter]
+);
+```
+
+### Reset state with key prop, not Effects
+```jsx
+// 🔴 Avoid: resetting state in Effects
+useEffect(() => {
+  setComment('');
+}, [userId]);
+
+// ✅ Good: reset with key prop
+<Profile userId={userId} key={userId} />
+```
+
+## Data Fetching Guidelines
+
+### Always implement cleanup for race conditions
+```jsx
+useEffect(() => {
+  let ignore = false;
+  
+  fetchData(query).then(result => {
+    if (!ignore) {
+      setData(result);
+    }
+  });
+  
+  return () => {
+    ignore = true;
+  };
+}, [query]);
+```
+
+### Consider custom hooks for data fetching
+Extract data fetching logic into reusable custom hooks with proper error handling and loading states.
+
+## Quick Checklist
+
+Before adding useEffect, ask:
+1. **Can this be calculated during render?** → Use direct calculation or useMemo
+2. **Is this triggered by user interaction?** → Use event handler
+3. **Am I synchronizing with external system?** → useEffect is appropriate
+4. **Do I need cleanup logic?** → Implement proper cleanup function
+5. **Could this cause race conditions?** → Add ignore flag or AbortController
+
+## Common Anti-patterns to Avoid
+
+- Redundant state that can be derived from existing state/props
+- Effects that immediately update state based on other state
+- Effects for handling form submissions or button clicks
+- Missing cleanup in data fetching Effects
+- Chains of Effects updating each other
+
+## Remember
+
+- **Calculate during render** when possible
+- **Handle events in event handlers**
+- **Synchronize with external systems** using Effects
+- **Always clean up** to prevent memory leaks and race conditions

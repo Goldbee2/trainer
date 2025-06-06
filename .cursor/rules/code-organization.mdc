@@ -1,0 +1,433 @@
+---
+description: 
+globs: ui/*
+alwaysApply: false
+---
+# Code Organization and Structure
+
+## Project Structure
+
+### Follow a Consistent Folder Structure
+Organize code by feature and layer, not by file type.
+
+```
+src/
+├── components/          # Reusable UI components
+│   ├── ui/             # Basic UI components (Button, Input, etc.)
+│   ├── forms/          # Form-specific components
+│   └── layout/         # Layout components (Header, Sidebar, etc.)
+├── features/           # Feature-based modules
+│   ├── auth/
+│   │   ├── components/
+│   │   ├── hooks/
+│   │   ├── services/
+│   │   ├── types/
+│   │   └── index.ts
+│   └── dashboard/
+│       ├── components/
+│       ├── hooks/
+│       ├── services/
+│       └── index.ts
+├── hooks/              # Shared custom hooks
+├── services/           # API and external service integrations
+├── utils/              # Pure utility functions
+├── types/              # Shared type definitions
+├── constants/          # Application constants
+└── lib/                # Third-party library configurations
+```
+
+### Feature-Based Organization
+Group related functionality together rather than separating by technical concerns.
+
+```tsx
+// ✅ Good - Feature-based organization
+features/
+├── user-management/
+│   ├── components/
+│   │   ├── UserList.tsx
+│   │   ├── UserCard.tsx
+│   │   └── UserForm.tsx
+│   ├── hooks/
+│   │   ├── useUsers.ts
+│   │   └── useUserForm.ts
+│   ├── services/
+│   │   └── userService.ts
+│   ├── types/
+│   │   └── user.types.ts
+│   └── index.ts       # Feature barrel export
+
+// ❌ Avoid - Technical separation
+src/
+├── components/
+│   ├── UserList.tsx
+│   ├── ProductList.tsx
+│   └── OrderList.tsx
+├── hooks/
+│   ├── useUsers.ts
+│   ├── useProducts.ts
+│   └── useOrders.ts
+└── services/
+    ├── userService.ts
+    ├── productService.ts
+    └── orderService.ts
+```
+
+## File Naming Conventions
+
+### Use Consistent Naming Patterns
+Apply consistent naming across all file types.
+
+```
+// ✅ Good - Consistent naming patterns
+components/
+├── UserCard.tsx           # PascalCase for components
+├── UserCard.test.tsx      # .test suffix for tests
+├── UserCard.stories.tsx   # .stories suffix for Storybook
+└── index.ts              # Barrel exports
+
+hooks/
+├── useAuth.ts            # camelCase with 'use' prefix
+├── useLocalStorage.ts
+└── useApi.ts
+
+services/
+├── apiService.ts         # camelCase with descriptive suffix
+├── authService.ts
+└── storageService.ts
+
+types/
+├── user.types.ts         # kebab-case with .types suffix
+├── api.types.ts
+└── common.types.ts
+
+utils/
+├── formatDate.ts         # camelCase function names
+├── validateEmail.ts
+└── parseUrl.ts
+```
+
+### Component File Structure
+Organize component files with a consistent internal structure.
+
+```tsx
+// ✅ Good - Consistent component structure
+import React from 'react'
+import { clsx } from 'clsx'
+
+// Types first
+interface UserCardProps {
+  user: User
+  onEdit?: (user: User) => void
+  onDelete?: (userId: string) => void
+  className?: string
+}
+
+// Constants (if any)
+const DEFAULT_AVATAR = '/images/default-avatar.png'
+
+// Helper functions (if small and component-specific)
+const formatUserRole = (role: string) => {
+  return role.charAt(0).toUpperCase() + role.slice(1)
+}
+
+// Main component
+export const UserCard = ({ 
+  user, 
+  onEdit, 
+  onDelete, 
+  className 
+}: UserCardProps) => {
+  // Hooks first
+  const [isLoading, setIsLoading] = useState(false)
+  
+  // Event handlers
+  const handleEdit = () => {
+    onEdit?.(user)
+  }
+  
+  const handleDelete = async () => {
+    setIsLoading(true)
+    try {
+      await onDelete?.(user.id)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+  
+  // Render
+  return (
+    <div className={clsx('user-card', className)}>
+      {/* Component JSX */}
+    </div>
+  )
+}
+
+// Default export (if needed)
+export default UserCard
+```
+
+## Import/Export Patterns
+
+### Use Barrel Exports for Clean Imports
+Create index.ts files to provide clean import paths.
+
+```tsx
+// ✅ Good - features/user-management/index.ts
+export { UserList } from './components/UserList'
+export { UserCard } from './components/UserCard'
+export { UserForm } from './components/UserForm'
+export { useUsers } from './hooks/useUsers'
+export { useUserForm } from './hooks/useUserForm'
+export * from './types/user.types'
+
+// ✅ Good - components/ui/index.ts
+export { Button } from './Button'
+export { Input } from './Input'
+export { Card } from './Card'
+export { Modal } from './Modal'
+
+// Clean imports in consuming files
+import { UserList, UserCard, useUsers } from '@/features/user-management'
+import { Button, Input, Card } from '@/components/ui'
+```
+
+### Organize Imports Consistently
+Follow a consistent import order and grouping.
+
+```tsx
+// ✅ Good - Consistent import organization
+// 1. React and core libraries
+import React, { useState, useEffect } from 'react'
+import { useRouter } from 'next/router'
+
+// 2. External libraries (alphabetical)
+import { clsx } from 'clsx'
+import { z } from 'zod'
+
+// 3. Internal imports (absolute paths, alphabetical)
+import { Button, Input, Card } from '@/components/ui'
+import { useAuth } from '@/hooks/useAuth'
+import { apiService } from '@/services/apiService'
+import { User } from '@/types/user.types'
+
+// 4. Relative imports (../before ./)
+import { UserCard } from '../UserCard'
+import { validateUserForm } from './utils'
+import type { Props } from './types'
+
+// ❌ Avoid - Mixed import order
+import { UserCard } from '../UserCard'
+import React from 'react'
+import { Button } from '@/components/ui'
+import { clsx } from 'clsx'
+import { useAuth } from '@/hooks/useAuth'
+```
+
+## Code Separation Principles
+
+### Separate Concerns Appropriately
+Keep different types of logic in appropriate places.
+
+```tsx
+// ✅ Good - Separated concerns
+// services/userService.ts - API logic
+export const userService = {
+  async fetchUsers(): Promise<User[]> {
+    const response = await apiClient.get('/users')
+    return response.data
+  },
+  
+  async createUser(userData: CreateUserData): Promise<User> {
+    const response = await apiClient.post('/users', userData)
+    return response.data
+  }
+}
+
+// hooks/useUsers.ts - State management logic
+export const useUsers = () => {
+  const [users, setUsers] = useState<User[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  
+  useEffect(() => {
+    const loadUsers = async () => {
+      try {
+        const data = await userService.fetchUsers()
+        setUsers(data)
+      } catch (err) {
+        setError(err.message)
+      } finally {
+        setLoading(false)
+      }
+    }
+    
+    loadUsers()
+  }, [])
+  
+  return { users, loading, error }
+}
+
+// components/UserList.tsx - Presentation logic
+export const UserList = () => {
+  const { users, loading, error } = useUsers()
+  
+  if (loading) return <LoadingSpinner />
+  if (error) return <ErrorMessage error={error} />
+  
+  return (
+    <div className="space-y-4">
+      {users.map(user => (
+        <UserCard key={user.id} user={user} />
+      ))}
+    </div>
+  )
+}
+```
+
+### Extract Custom Hooks for Reusable Logic
+Create custom hooks for logic that might be reused.
+
+```tsx
+// ✅ Good - Reusable custom hooks
+// hooks/useLocalStorage.ts
+export const useLocalStorage = <T>(key: string, initialValue: T) => {
+  const [storedValue, setStoredValue] = useState<T>(() => {
+    try {
+      const item = window.localStorage.getItem(key)
+      return item ? JSON.parse(item) : initialValue
+    } catch (error) {
+      console.error(`Error reading localStorage key "${key}":`, error)
+      return initialValue
+    }
+  })
+  
+  const setValue = (value: T | ((val: T) => T)) => {
+    try {
+      const valueToStore = value instanceof Function ? value(storedValue) : value
+      setStoredValue(valueToStore)
+      window.localStorage.setItem(key, JSON.stringify(valueToStore))
+    } catch (error) {
+      console.error(`Error setting localStorage key "${key}":`, error)
+    }
+  }
+  
+  return [storedValue, setValue] as const
+}
+
+// hooks/useApi.ts
+export const useApi = <T>(fetcher: () => Promise<T>) => {
+  const [data, setData] = useState<T | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  
+  useEffect(() => {
+    let cancelled = false
+    
+    const fetchData = async () => {
+      try {
+        setLoading(true)
+        const result = await fetcher()
+        if (!cancelled) {
+          setData(result)
+          setError(null)
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : 'An error occurred')
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false)
+        }
+      }
+    }
+    
+    fetchData()
+    
+    return () => {
+      cancelled = true
+    }
+  }, [])
+  
+  return { data, loading, error }
+}
+```
+
+## Configuration and Constants
+
+### Centralize Configuration
+Keep all configuration in centralized locations.
+
+```tsx
+// ✅ Good - config/app.config.ts
+export const appConfig = {
+  api: {
+    baseUrl: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api',
+    timeout: 10000,
+  },
+  auth: {
+    tokenKey: 'auth-token',
+    refreshTokenKey: 'refresh-token',
+  },
+  ui: {
+    itemsPerPage: 20,
+    debounceDelay: 300,
+  }
+} as const
+
+// ✅ Good - constants/routes.ts
+export const ROUTES = {
+  HOME: '/',
+  LOGIN: '/login',
+  DASHBOARD: '/dashboard',
+  USERS: '/users',
+  USER_DETAIL: (id: string) => `/users/${id}`,
+  SETTINGS: '/settings',
+} as const
+
+// ✅ Good - constants/api.ts
+export const API_ENDPOINTS = {
+  USERS: '/users',
+  USER_BY_ID: (id: string) => `/users/${id}`,
+  LOGIN: '/auth/login',
+  LOGOUT: '/auth/logout',
+} as const
+```
+
+### Environment-Specific Configuration
+Handle different environments cleanly.
+
+```tsx
+// ✅ Good - lib/env.ts
+import { z } from 'zod'
+
+const envSchema = z.object({
+  NODE_ENV: z.enum(['development', 'production', 'test']),
+  NEXT_PUBLIC_API_URL: z.string().url(),
+  DATABASE_URL: z.string().url(),
+  JWT_SECRET: z.string().min(32),
+})
+
+export const env = envSchema.parse(process.env)
+
+// ✅ Good - lib/config.ts
+export const config = {
+  isDev: env.NODE_ENV === 'development',
+  isProd: env.NODE_ENV === 'production',
+  isTest: env.NODE_ENV === 'test',
+  
+  api: {
+    url: env.NEXT_PUBLIC_API_URL,
+    timeout: env.NODE_ENV === 'development' ? 30000 : 10000,
+  },
+  
+  database: {
+    url: env.DATABASE_URL,
+  },
+  
+  auth: {
+    secret: env.JWT_SECRET,
+    expiresIn: '7d',
+  },
+} as const
+```

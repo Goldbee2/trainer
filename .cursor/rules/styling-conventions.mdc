@@ -1,0 +1,366 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Styling Conventions
+
+## Tailwind CSS Best Practices
+
+### Use Tailwind Utilities Over Custom CSS
+Prefer Tailwind utility classes over custom CSS when possible.
+
+```tsx
+// ✅ Good - Tailwind utilities
+const Button = ({ variant, size, children }: Props) => {
+  const baseClasses = "inline-flex items-center justify-center font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2"
+  
+  const variantClasses = {
+    primary: "bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500",
+    secondary: "bg-gray-200 text-gray-900 hover:bg-gray-300 focus:ring-gray-500",
+    outline: "border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 focus:ring-blue-500"
+  }
+  
+  const sizeClasses = {
+    sm: "px-3 py-2 text-sm",
+    md: "px-4 py-2 text-base",
+    lg: "px-6 py-3 text-lg"
+  }
+  
+  return (
+    <button 
+      className={`${baseClasses} ${variantClasses[variant]} ${sizeClasses[size]}`}
+    >
+      {children}
+    </button>
+  )
+}
+
+// ❌ Avoid - Custom CSS for things Tailwind can handle
+const Button = ({ children }: Props) => (
+  <button className="custom-button">
+    {children}
+  </button>
+)
+// With custom-button defined in CSS file
+```
+
+### Use Conditional Classes Efficiently
+Leverage libraries like `clsx` or `cn` for conditional styling.
+
+```tsx
+// ✅ Good - Using clsx for conditional classes
+import { clsx } from 'clsx'
+
+const Alert = ({ type, message, dismissible }: Props) => {
+  return (
+    <div className={clsx(
+      // Base styles
+      "p-4 rounded-lg border flex items-start space-x-3",
+      // Conditional styles
+      {
+        "bg-red-50 border-red-200 text-red-800": type === 'error',
+        "bg-yellow-50 border-yellow-200 text-yellow-800": type === 'warning',
+        "bg-green-50 border-green-200 text-green-800": type === 'success',
+        "bg-blue-50 border-blue-200 text-blue-800": type === 'info',
+      },
+      // Additional conditional
+      dismissible && "pr-10 relative"
+    )}>
+      {message}
+    </div>
+  )
+}
+
+// ✅ Good - Custom cn utility (common pattern)
+import { twMerge } from 'tailwind-merge'
+import { clsx, type ClassValue } from 'clsx'
+
+export const cn = (...inputs: ClassValue[]) => {
+  return twMerge(clsx(inputs))
+}
+
+// Usage
+const className = cn(
+  "base-classes",
+  condition && "conditional-classes",
+  props.className // Allow override
+)
+```
+
+### Consistent Spacing and Sizing
+Use Tailwind's spacing scale consistently across the application.
+
+```tsx
+// ✅ Good - Consistent spacing scale
+const Card = ({ children }: Props) => (
+  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 space-y-4">
+    {children}
+  </div>
+)
+
+const CardHeader = ({ children }: Props) => (
+  <div className="pb-4 border-b border-gray-200">
+    {children}
+  </div>
+)
+
+// ✅ Good - Consistent breakpoints
+const ResponsiveGrid = ({ children }: Props) => (
+  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+    {children}
+  </div>
+)
+```
+
+### Use CSS Variables for Dynamic Values
+For values that need to be dynamic, use CSS custom properties.
+
+```tsx
+// ✅ Good - CSS variables for dynamic values
+const ProgressBar = ({ progress, color }: Props) => {
+  return (
+    <div 
+      className="w-full bg-gray-200 rounded-full h-2 overflow-hidden"
+      style={{ '--progress': `${progress}%`, '--color': color } as React.CSSProperties}
+    >
+      <div 
+        className="h-full transition-all duration-300 ease-out"
+        style={{ 
+          width: 'var(--progress)', 
+          backgroundColor: 'var(--color)' 
+        }}
+      />
+    </div>
+  )
+}
+```
+
+## Design System Principles
+
+### Create Reusable Component Variants
+Define component variants using a consistent pattern.
+
+```tsx
+// ✅ Good - Variant-based design system
+import { cva, type VariantProps } from 'class-variance-authority'
+
+const buttonVariants = cva(
+  // Base styles
+  "inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none ring-offset-background",
+  {
+    variants: {
+      variant: {
+        default: "bg-primary text-primary-foreground hover:bg-primary/90",
+        destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90",
+        outline: "border border-input hover:bg-accent hover:text-accent-foreground",
+        secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
+        ghost: "hover:bg-accent hover:text-accent-foreground",
+        link: "underline-offset-4 hover:underline text-primary"
+      },
+      size: {
+        default: "h-10 py-2 px-4",
+        sm: "h-9 px-3 rounded-md",
+        lg: "h-11 px-8 rounded-md",
+        icon: "h-10 w-10"
+      }
+    },
+    defaultVariants: {
+      variant: "default",
+      size: "default"
+    }
+  }
+)
+
+interface ButtonProps 
+  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
+    VariantProps<typeof buttonVariants> {
+  asChild?: boolean
+}
+
+const Button = ({ className, variant, size, ...props }: ButtonProps) => {
+  return (
+    <button
+      className={cn(buttonVariants({ variant, size, className }))}
+      {...props}
+    />
+  )
+}
+```
+
+### Consistent Color Usage
+Use semantic color naming and consistent application.
+
+```tsx
+// ✅ Good - Semantic color usage
+const StatusBadge = ({ status }: Props) => {
+  const statusConfig = {
+    pending: {
+      className: "bg-yellow-100 text-yellow-800 border-yellow-200",
+      icon: Clock
+    },
+    approved: {
+      className: "bg-green-100 text-green-800 border-green-200", 
+      icon: CheckCircle
+    },
+    rejected: {
+      className: "bg-red-100 text-red-800 border-red-200",
+      icon: XCircle
+    }
+  }
+  
+  const config = statusConfig[status]
+  const Icon = config.icon
+  
+  return (
+    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${config.className}`}>
+      <Icon className="w-3 h-3 mr-1" />
+      {status.charAt(0).toUpperCase() + status.slice(1)}
+    </span>
+  )
+}
+```
+
+### Typography Scale
+Maintain consistent typography hierarchy.
+
+```tsx
+// ✅ Good - Consistent typography scale
+const typographyVariants = {
+  h1: "scroll-m-20 text-4xl font-extrabold tracking-tight lg:text-5xl",
+  h2: "scroll-m-20 border-b pb-2 text-3xl font-semibold tracking-tight first:mt-0",
+  h3: "scroll-m-20 text-2xl font-semibold tracking-tight",
+  h4: "scroll-m-20 text-xl font-semibold tracking-tight",
+  p: "leading-7 [&:not(:first-child)]:mt-6",
+  lead: "text-xl text-muted-foreground",
+  large: "text-lg font-semibold",
+  small: "text-sm font-medium leading-none",
+  muted: "text-sm text-muted-foreground"
+}
+
+const Typography = ({ variant, className, children, ...props }: Props) => {
+  const Component = variant.startsWith('h') ? variant : 'p'
+  
+  return (
+    <Component 
+      className={cn(typographyVariants[variant], className)}
+      {...props}
+    >
+      {children}
+    </Component>
+  )
+}
+```
+
+## Layout Patterns
+
+### Use CSS Grid and Flexbox Appropriately
+Choose the right layout method for the use case.
+
+```tsx
+// ✅ Good - CSS Grid for 2D layouts
+const DashboardGrid = ({ children }: Props) => (
+  <div className="grid grid-cols-12 gap-6 h-screen">
+    <aside className="col-span-2 bg-gray-50 p-4">
+      {/* Sidebar */}
+    </aside>
+    <main className="col-span-10 p-6">
+      {children}
+    </main>
+  </div>
+)
+
+// ✅ Good - Flexbox for 1D layouts
+const Toolbar = ({ children }: Props) => (
+  <div className="flex items-center justify-between p-4 border-b">
+    <div className="flex items-center space-x-4">
+      {/* Left items */}
+    </div>
+    <div className="flex items-center space-x-2">
+      {/* Right items */}
+    </div>
+  </div>
+)
+```
+
+### Responsive Design Patterns
+Design mobile-first with progressive enhancement.
+
+```tsx
+// ✅ Good - Mobile-first responsive design
+const ProductGrid = ({ products }: Props) => (
+  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:gap-6 lg:grid-cols-3 xl:grid-cols-4">
+    {products.map(product => (
+      <ProductCard key={product.id} product={product} />
+    ))}
+  </div>
+)
+
+// ✅ Good - Responsive text sizing
+const Hero = ({ title, subtitle }: Props) => (
+  <div className="text-center">
+    <h1 className="text-3xl font-bold tracking-tight sm:text-4xl md:text-5xl lg:text-6xl">
+      {title}
+    </h1>
+    <p className="mt-4 text-lg text-gray-600 sm:text-xl md:text-2xl">
+      {subtitle}
+    </p>
+  </div>
+)
+```
+
+## Animation and Transitions
+
+### Use Consistent Animation Timing
+Maintain consistent animation duration and easing across the app.
+
+```tsx
+// ✅ Good - Consistent transitions
+const Modal = ({ isOpen, onClose, children }: Props) => (
+  <div className={`fixed inset-0 z-50 transition-opacity duration-300 ${
+    isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
+  }`}>
+    <div className="fixed inset-0 bg-black/50" onClick={onClose} />
+    <div className={`fixed inset-4 bg-white rounded-lg transition-transform duration-300 ${
+      isOpen ? 'translate-y-0 scale-100' : 'translate-y-4 scale-95'
+    }`}>
+      {children}
+    </div>
+  </div>
+)
+
+// ✅ Good - Hover and focus states
+const InteractiveCard = ({ children }: Props) => (
+  <div className="bg-white rounded-lg border border-gray-200 transition-all duration-200 hover:shadow-md hover:border-gray-300 focus-within:ring-2 focus-within:ring-blue-500 focus-within:ring-offset-2">
+    {children}
+  </div>
+)
+```
+
+## Accessibility Considerations
+
+### Ensure Proper Focus Management
+Make interactive elements keyboard accessible.
+
+```tsx
+// ✅ Good - Accessible button with proper focus styles
+const IconButton = ({ icon: Icon, label, onClick }: Props) => (
+  <button
+    onClick={onClick}
+    aria-label={label}
+    className="p-2 rounded-lg text-gray-600 hover:text-gray-900 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
+  >
+    <Icon className="w-5 h-5" />
+  </button>
+)
+
+// ✅ Good - Skip link for keyboard navigation
+const SkipLink = () => (
+  <a
+    href="#main-content"
+    className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 bg-blue-600 text-white px-4 py-2 rounded-md font-medium z-50"
+  >
+    Skip to main content
+  </a>
+)
+```

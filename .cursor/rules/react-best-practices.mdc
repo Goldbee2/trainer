@@ -1,0 +1,360 @@
+---
+description: 
+globs: *.tsx,ui/**/*.tsx
+alwaysApply: false
+---
+# React Best Practices
+
+## Component Design Principles
+
+### Single Responsibility Principle
+Each component should have one clear purpose and responsibility.
+
+```tsx
+// ✅ Good - Single responsibility
+const UserAvatar = ({ user, size = 'md' }: UserAvatarProps) => (
+  <img 
+    src={user.avatar} 
+    alt={user.name}
+    className={`rounded-full ${sizeClasses[size]}`}
+  />
+)
+
+// ❌ Avoid - Multiple responsibilities
+const UserCard = ({ user }: Props) => {
+  // Don't mix avatar logic, user data fetching, and card layout
+}
+```
+
+### Composition over Complex Props
+Use composition patterns instead of complex conditional props.
+
+```tsx
+// ✅ Good - Composition pattern
+<Card>
+  <Card.Header>
+    <Card.Title>{title}</Card.Title>
+  </Card.Header>
+  <Card.Content>{content}</Card.Content>
+</Card>
+
+// ❌ Avoid - Complex props
+<Card 
+  hasHeader 
+  headerTitle={title}
+  headerSubtitle={subtitle}
+  showFooter
+  footerActions={actions}
+/>
+```
+
+## State Management
+
+### Prefer Local State When Possible
+Keep state as close to where it's used as possible.
+
+```tsx
+// ✅ Good - Local state for UI concerns
+const Modal = ({ children, onClose }: Props) => {
+  const [isAnimating, setIsAnimating] = useState(false)
+  
+  return (
+    <div className={`modal ${isAnimating ? 'animating' : ''}`}>
+      {children}
+    </div>
+  )
+}
+```
+
+### Use Reducers for Complex State Logic
+When state logic becomes complex, prefer useReducer over multiple useState calls.
+
+```tsx
+// ✅ Good - useReducer for complex state
+type FormState = {
+  values: Record<string, string>
+  errors: Record<string, string>
+  isSubmitting: boolean
+}
+
+type FormAction = 
+  | { type: 'SET_FIELD'; field: string; value: string }
+  | { type: 'SET_ERROR'; field: string; error: string }
+  | { type: 'SUBMIT_START' }
+  | { type: 'SUBMIT_SUCCESS' }
+
+const formReducer = (state: FormState, action: FormAction): FormState => {
+  switch (action.type) {
+    case 'SET_FIELD':
+      return {
+        ...state,
+        values: { ...state.values, [action.field]: action.value },
+        errors: { ...state.errors, [action.field]: '' }
+      }
+    // ... other cases
+  }
+}
+```
+
+## useEffect Guidelines
+
+### Avoid useEffect for Derived State
+Calculate derived values during render instead of using effects.
+
+```tsx
+// ✅ Good - Calculate during render
+const TodoList = ({ todos, filter }: Props) => {
+  const filteredTodos = useMemo(() => 
+    todos.filter(todo => filterFunctions[filter](mdc:todo)),
+    [todos, filter]
+  )
+  
+  return <div>{filteredTodos.map(renderTodo)}</div>
+}
+
+// ❌ Avoid - useEffect for derived state
+const TodoList = ({ todos, filter }: Props) => {
+  const [filteredTodos, setFilteredTodos] = useState<Todo[]>([])
+  
+  useEffect(() => {
+    setFilteredTodos(todos.filter(todo => filterFunctions[filter](mdc:todo)))
+  }, [todos, filter])
+}
+```
+
+### Always Implement Cleanup
+Prevent memory leaks and race conditions with proper cleanup.
+
+```tsx
+// ✅ Good - Proper cleanup
+useEffect(() => {
+  let cancelled = false
+  
+  const fetchData = async () => {
+    try {
+      const result = await api.fetchUser(userId)
+      if (!cancelled) {
+        setUser(result)
+      }
+    } catch (error) {
+      if (!cancelled) {
+        setError(error.message)
+      }
+    }
+  }
+  
+  fetchData()
+  
+  return () => {
+    cancelled = true
+  }
+}, [userId])
+```
+
+### Use Custom Hooks for Reusable Logic
+Extract common effect patterns into custom hooks.
+
+```tsx
+// ✅ Good - Custom hook for data fetching
+const useUser = (userId: string) => {
+  const [user, setUser] = useState<User | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  
+  useEffect(() => {
+    let cancelled = false
+    
+    const fetchUser = async () => {
+      try {
+        setLoading(true)
+        const result = await api.fetchUser(userId)
+        if (!cancelled) {
+          setUser(result)
+          setError(null)
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setError(err.message)
+          setUser(null)
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false)
+        }
+      }
+    }
+    
+    fetchUser()
+    
+    return () => {
+      cancelled = true
+    }
+  }, [userId])
+  
+  return { user, loading, error }
+}
+```
+
+## Performance Optimization
+
+### Use React.memo Strategically
+Memoize components that receive stable props and render frequently.
+
+```tsx
+// ✅ Good - Memoize expensive components
+const ExpensiveListItem = React.memo(({ item, onUpdate }: Props) => {
+  // Expensive rendering logic
+  return <div>{/* complex UI */}</div>
+})
+
+// ✅ Good - Custom comparison for complex props
+const UserCard = React.memo(({ user, actions }: Props) => {
+  return <div>{/* component */}</div>
+}, (prevProps, nextProps) => {
+  return prevProps.user.id === nextProps.user.id &&
+         prevProps.user.updatedAt === nextProps.user.updatedAt
+})
+```
+
+### Optimize Callback Dependencies
+Use useCallback for callbacks passed to memoized components.
+
+```tsx
+// ✅ Good - Stable callback references
+const ParentComponent = ({ users }: Props) => {
+  const handleUserUpdate = useCallback((userId: string, data: UserData) => {
+    // Update logic
+  }, [])
+  
+  return (
+    <div>
+      {users.map(user => (
+        <MemoizedUserCard 
+          key={user.id}
+          user={user}
+          onUpdate={handleUserUpdate}
+        />
+      ))}
+    </div>
+  )
+}
+```
+
+## Component Patterns
+
+### Use Render Props for Flexible Components
+```tsx
+// ✅ Good - Render props pattern
+interface DataFetcherProps<T> {
+  url: string
+  children: (data: T | null, loading: boolean, error: string | null) => React.ReactNode
+}
+
+const DataFetcher = <T,>({ url, children }: DataFetcherProps<T>) => {
+  const { data, loading, error } = useApiData<T>(url)
+  return <>{children(data, loading, error)}</>
+}
+
+// Usage
+<DataFetcher<User> url="/api/user">
+  {(user, loading, error) => {
+    if (loading) return <LoadingSpinner />
+    if (error) return <ErrorMessage error={error} />
+    return <UserProfile user={user} />
+  }}
+</DataFetcher>
+```
+
+### Use Compound Components for Related UI
+```tsx
+// ✅ Good - Compound component pattern
+const Accordion = ({ children }: Props) => {
+  const [openItems, setOpenItems] = useState<Set<string>>(new Set())
+  
+  const context = {
+    openItems,
+    toggleItem: (id: string) => {
+      const newOpenItems = new Set(openItems)
+      if (newOpenItems.has(id)) {
+        newOpenItems.delete(id)
+      } else {
+        newOpenItems.add(id)
+      }
+      setOpenItems(newOpenItems)
+    }
+  }
+  
+  return (
+    <AccordionContext.Provider value={context}>
+      <div className="accordion">{children}</div>
+    </AccordionContext.Provider>
+  )
+}
+
+Accordion.Item = AccordionItem
+Accordion.Header = AccordionHeader
+Accordion.Content = AccordionContent
+```
+
+## Error Boundaries
+
+### Implement Error Boundaries for Resilient UIs
+```tsx
+class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  constructor(props: ErrorBoundaryProps) {
+    super(props)
+    this.state = { hasError: false, error: null }
+  }
+  
+  static getDerivedStateFromError(error: Error): Partial<ErrorBoundaryState> {
+    return { hasError: true, error }
+  }
+  
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error('Error caught by boundary:', error, errorInfo)
+    // Report to error monitoring service
+  }
+  
+  render() {
+    if (this.state.hasError) {
+      return this.props.fallback || <DefaultErrorFallback />
+    }
+    
+    return this.props.children
+  }
+}
+```
+
+## Testing Considerations
+
+### Design Components for Testability
+```tsx
+// ✅ Good - Testable component
+interface UserListProps {
+  users: User[]
+  onUserSelect: (user: User) => void
+  selectedUserId?: string
+  'data-testid'?: string
+}
+
+const UserList = ({ 
+  users, 
+  onUserSelect, 
+  selectedUserId,
+  'data-testid': testId = 'user-list'
+}: UserListProps) => {
+  return (
+    <div data-testid={testId}>
+      {users.map(user => (
+        <UserItem
+          key={user.id}
+          user={user}
+          isSelected={user.id === selectedUserId}
+          onClick={() => onUserSelect(user)}
+          data-testid={`user-item-${user.id}`}
+        />
+      ))}
+    </div>
+  )
+}
+```

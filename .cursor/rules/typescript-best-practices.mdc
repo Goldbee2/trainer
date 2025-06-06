@@ -1,0 +1,165 @@
+---
+description: 
+globs: *.tsx
+alwaysApply: false
+---
+# TypeScript Best Practices
+
+## Type Safety and Definitions
+
+### Always use explicit types for function parameters and return values
+```typescript
+// ✅ Good
+function processData(data: UserData[]): ProcessedResult {
+  return data.map(item => ({ ...item, processed: true }))
+}
+
+// ❌ Avoid
+function processData(data: any): any {
+  return data.map(item => ({ ...item, processed: true }))
+}
+```
+
+### Use strict TypeScript configuration
+- Enable `strict: true` in tsconfig.json
+- Use `noImplicitAny`, `strictNullChecks`, and `strictFunctionTypes`
+- Prefer `unknown` over `any` when type is uncertain
+
+### Interface vs Type Aliases
+- Use `interface` for object shapes that might be extended
+- Use `type` for unions, intersections, and computed types
+```typescript
+// ✅ Good - Use interface for extensible object shapes
+interface User {
+  id: string
+  name: string
+}
+
+interface AdminUser extends User {
+  permissions: string[]
+}
+
+// ✅ Good - Use type for unions and computed types
+type Status = 'loading' | 'success' | 'error'
+type UserKeys = keyof User
+```
+
+### Utility Types
+- Leverage built-in utility types: `Partial<T>`, `Required<T>`, `Pick<T, K>`, `Omit<T, K>`
+- Create custom utility types for repeated patterns
+```typescript
+// ✅ Good - Use utility types
+type UpdateUser = Partial<Pick<User, 'name' | 'email'>>
+type CreateUser = Omit<User, 'id' | 'createdAt'>
+```
+
+## Error Handling
+
+### Use discriminated unions for error states
+```typescript
+type Result<T> = 
+  | { success: true; data: T }
+  | { success: false; error: string }
+
+// Usage
+function parseData(input: string): Result<ParsedData> {
+  try {
+    return { success: true, data: JSON.parse(input) }
+  } catch {
+    return { success: false, error: 'Invalid JSON' }
+  }
+}
+```
+
+### Prefer explicit error handling over throwing
+```typescript
+// ✅ Good - Explicit error handling
+async function fetchUser(id: string): Promise<Result<User>> {
+  try {
+    const response = await api.get(`/users/${id}`)
+    return { success: true, data: response.data }
+  } catch (error) {
+    return { success: false, error: error.message }
+  }
+}
+```
+
+## Generic Constraints
+
+### Use generic constraints to improve type safety
+```typescript
+// ✅ Good - Constrained generics
+interface Repository<T extends { id: string }> {
+  findById(id: string): Promise<T | null>
+  save(entity: T): Promise<T>
+}
+
+// ✅ Good - Keyof constraints
+function getProperty<T, K extends keyof T>(obj: T, key: K): T[K] {
+  return obj[key]
+}
+```
+
+## Import and Export Patterns
+
+### Use consistent import/export patterns
+```typescript
+// ✅ Good - Named exports for utilities
+export const formatDate = (date: Date): string => { /* ... */ }
+export const parseDate = (dateString: string): Date => { /* ... */ }
+
+// ✅ Good - Default export for main component/class
+export default class UserService { /* ... */ }
+
+// ✅ Good - Re-exports for clean API
+export { User, type UserData } from './types'
+export { UserService } from './UserService'
+```
+
+### Organize imports consistently
+```typescript
+// 1. External libraries
+import React from 'react'
+import { clsx } from 'clsx'
+
+// 2. Internal modules (absolute imports)
+import { Button } from '@/components/ui/Button'
+import { useAuth } from '@/hooks/useAuth'
+
+// 3. Relative imports
+import { UserCard } from './UserCard'
+import type { Props } from './types'
+```
+
+## Performance Considerations
+
+### Use `const assertions` for immutable data
+```typescript
+// ✅ Good - Const assertion
+const STATUSES = ['pending', 'approved', 'rejected'] as const
+type Status = typeof STATUSES[number] // 'pending' | 'approved' | 'rejected'
+```
+
+### Prefer `readonly` for immutable arrays and objects
+```typescript
+interface Config {
+  readonly apiUrl: string
+  readonly features: readonly string[]
+}
+```
+
+## Naming Conventions
+
+- Use PascalCase for types, interfaces, classes, and components
+- Use camelCase for variables, functions, and methods
+- Use SCREAMING_SNAKE_CASE for constants
+- Prefix interfaces with descriptive names, not "I"
+- Use descriptive names that express intent
+
+```typescript
+// ✅ Good naming
+interface UserPreferences { /* ... */ }
+type ApiResponse<T> = { /* ... */ }
+const MAX_RETRY_ATTEMPTS = 3
+const fetchUserData = async () => { /* ... */ }
+```

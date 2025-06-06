@@ -1,0 +1,623 @@
+---
+description: 
+globs: *.tsx
+alwaysApply: false
+---
+# Performance Optimization and Accessibility
+
+## Performance Best Practices
+
+### Code Splitting and Lazy Loading
+Implement strategic code splitting to reduce initial bundle size.
+
+```tsx
+// ✅ Good - Route-based code splitting
+import { lazy, Suspense } from 'react'
+import { Routes, Route } from 'react-router-dom'
+
+// Lazy load route components
+const Dashboard = lazy(() => import('./pages/Dashboard'))
+const UserManagement = lazy(() => import('./pages/UserManagement'))
+const Settings = lazy(() => import('./pages/Settings'))
+
+const App = () => (
+  <Routes>
+    <Route
+      path="/dashboard"
+      element={
+        <Suspense fallback={<PageLoader />}>
+          <Dashboard />
+        </Suspense>
+      }
+    />
+    <Route
+      path="/users"
+      element={
+        <Suspense fallback={<PageLoader />}>
+          <UserManagement />
+        </Suspense>
+      }
+    />
+    {/* Other routes */}
+  </Routes>
+)
+
+// ✅ Good - Component-based lazy loading
+const HeavyChart = lazy(() => import('./components/HeavyChart'))
+
+const Dashboard = () => {
+  const [showChart, setShowChart] = useState(false)
+  
+  return (
+    <div>
+      <h1>Dashboard</h1>
+      {showChart && (
+        <Suspense fallback={<ChartSkeleton />}>
+          <HeavyChart />
+        </Suspense>
+      )}
+      <button onClick={() => setShowChart(true)}>
+        Show Chart
+      </button>
+    </div>
+  )
+}
+```
+
+### Optimize Re-renders with Memoization
+Use React.memo, useMemo, and useCallback strategically.
+
+```tsx
+// ✅ Good - Strategic memoization
+const ExpensiveList = React.memo(({ 
+  items, 
+  onItemClick, 
+  filter 
+}: Props) => {
+  // Memoize expensive calculations
+  const filteredItems = useMemo(() => {
+    return items.filter(item => item.category.includes(filter))
+                .sort((a, b) => a.priority - b.priority)
+  }, [items, filter])
+  
+  // Memoize callbacks passed to child components
+  const handleItemClick = useCallback((item: Item) => {
+    onItemClick(item.id, item)
+  }, [onItemClick])
+  
+  return (
+    <div className="space-y-2">
+      {filteredItems.map(item => (
+        <ExpensiveListItem
+          key={item.id}
+          item={item}
+          onClick={handleItemClick}
+        />
+      ))}
+    </div>
+  )
+})
+
+// ✅ Good - Memoized list item with custom comparison
+const ExpensiveListItem = React.memo(({ 
+  item, 
+  onClick 
+}: Props) => {
+  return (
+    <div onClick={() => onClick(item)} className="border p-4 rounded">
+      <h3>{item.title}</h3>
+      <p>{item.description}</p>
+    </div>
+  )
+}, (prevProps, nextProps) => {
+  // Custom comparison for better control
+  return (
+    prevProps.item.id === nextProps.item.id &&
+    prevProps.item.updatedAt === nextProps.item.updatedAt
+  )
+})
+```
+
+### Optimize Bundle Size
+Implement tree shaking and minimize bundle size.
+
+```tsx
+// ✅ Good - Tree-shakable imports
+import { debounce } from 'lodash-es'
+import { format } from 'date-fns'
+
+// ✅ Good - Import only what you need from icon libraries
+import { Search, User, Settings } from 'lucide-react'
+
+// ❌ Avoid - Importing entire libraries
+import * as _ from 'lodash'
+import * as dateFns from 'date-fns'
+import * as Icons from 'lucide-react'
+
+// ✅ Good - Dynamic imports for heavy libraries
+const loadHeavyLibrary = async () => {
+  const { heavyFunction } = await import('heavy-library')
+  return heavyFunction
+}
+
+// ✅ Good - Conditional polyfill loading
+const loadPolyfills = async () => {
+  if (!('IntersectionObserver' in window)) {
+    await import('intersection-observer')
+  }
+}
+```
+
+### Image and Asset Optimization
+Optimize images and assets for better performance.
+
+```tsx
+// ✅ Good - Responsive images with Next.js Image
+import Image from 'next/image'
+
+const OptimizedImage = ({ src, alt, ...props }: Props) => (
+  <Image
+    src={src}
+    alt={alt}
+    width={800}
+    height={600}
+    placeholder="blur"
+    blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAhEAACAQMDBQAAAAAAAAAAAAABAgMABAUGIWEREiMxUf/EABUBAQEAAAAAAAAAAAAAAAAAAAMF/8QAGhEAAgIDAAAAAAAAAAAAAAAAAAECEgMRkf/aAAwDAQACEQMRAD8AltJagyeH0AthI5xdrLcNM91BF5pX2HaH9bcfaSXWGaRmknyJckliyjqTzSlT54b6bk+h0R//2Q=="
+    priority={props.priority}
+    {...props}
+  />
+)
+
+// ✅ Good - Lazy loading images with Intersection Observer
+const LazyImage = ({ src, alt, className }: Props) => {
+  const [isLoaded, setIsLoaded] = useState(false)
+  const [isInView, setIsInView] = useState(false)
+  const imgRef = useRef<HTMLImageElement>(null)
+  
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsInView(true)
+          observer.disconnect()
+        }
+      },
+      { threshold: 0.1 }
+    )
+    
+    if (imgRef.current) {
+      observer.observe(imgRef.current)
+    }
+    
+    return () => observer.disconnect()
+  }, [])
+  
+  return (
+    <div ref={imgRef} className={className}>
+      {isInView && (
+        <img
+          src={src}
+          alt={alt}
+          onLoad={() => setIsLoaded(true)}
+          className={`transition-opacity duration-300 ${
+            isLoaded ? 'opacity-100' : 'opacity-0'
+          }`}
+        />
+      )}
+    </div>
+  )
+}
+```
+
+### Virtual Scrolling for Large Lists
+Implement virtual scrolling for performance with large datasets.
+
+```tsx
+// ✅ Good - Virtual scrolling implementation
+import { FixedSizeList as List } from 'react-window'
+
+const VirtualizedList = ({ items }: Props) => {
+  const Row = ({ index, style }: { index: number; style: React.CSSProperties }) => (
+    <div style={style} className="flex items-center p-4 border-b">
+      <ListItem item={items[index]} />
+    </div>
+  )
+  
+  return (
+    <List
+      height={600}
+      itemCount={items.length}
+      itemSize={80}
+      width="100%"
+    >
+      {Row}
+    </List>
+  )
+}
+
+// ✅ Good - Custom virtual scrolling with Intersection Observer
+const useVirtualScroll = <T,>(
+  items: T[],
+  itemHeight: number,
+  containerHeight: number
+) => {
+  const [startIndex, setStartIndex] = useState(0)
+  const [endIndex, setEndIndex] = useState(0)
+  
+  const visibleItems = useMemo(() => {
+    const start = Math.max(0, startIndex - 5) // Buffer
+    const end = Math.min(items.length, endIndex + 5)
+    return items.slice(start, end).map((item, index) => ({
+      item,
+      index: start + index
+    }))
+  }, [items, startIndex, endIndex])
+  
+  const handleScroll = useCallback((scrollTop: number) => {
+    const newStartIndex = Math.floor(scrollTop / itemHeight)
+    const visibleCount = Math.ceil(containerHeight / itemHeight)
+    const newEndIndex = newStartIndex + visibleCount
+    
+    setStartIndex(newStartIndex)
+    setEndIndex(newEndIndex)
+  }, [itemHeight, containerHeight])
+  
+  return { visibleItems, handleScroll }
+}
+```
+
+## Accessibility Best Practices
+
+### Semantic HTML and ARIA
+Use semantic HTML elements and ARIA attributes appropriately.
+
+```tsx
+// ✅ Good - Semantic HTML structure
+const UserProfile = ({ user }: Props) => (
+  <article className="bg-white rounded-lg shadow p-6">
+    <header className="mb-4">
+      <h1 className="text-2xl font-bold">{user.name}</h1>
+      <p className="text-gray-600">{user.title}</p>
+    </header>
+    
+    <section aria-labelledby="contact-info">
+      <h2 id="contact-info" className="text-lg font-semibold mb-2">
+        Contact Information
+      </h2>
+      <address className="not-italic">
+        <p>Email: <a href={`mailto:${user.email}`}>{user.email}</a></p>
+        <p>Phone: <a href={`tel:${user.phone}`}>{user.phone}</a></p>
+      </address>
+    </section>
+  </article>
+)
+
+// ✅ Good - Accessible form with proper labeling
+const ContactForm = ({ onSubmit }: Props) => {
+  const [errors, setErrors] = useState<Record<string, string>>({})
+  
+  return (
+    <form onSubmit={onSubmit} noValidate>
+      <fieldset className="space-y-4">
+        <legend className="text-lg font-semibold">Contact Information</legend>
+        
+        <div>
+          <label htmlFor="name" className="block text-sm font-medium">
+            Name *
+          </label>
+          <input
+            id="name"
+            name="name"
+            type="text"
+            required
+            aria-invalid={!!errors.name}
+            aria-describedby={errors.name ? "name-error" : undefined}
+            className="mt-1 block w-full rounded-md border-gray-300"
+          />
+          {errors.name && (
+            <p id="name-error" role="alert" className="mt-1 text-sm text-red-600">
+              {errors.name}
+            </p>
+          )}
+        </div>
+        
+        <div>
+          <label htmlFor="email" className="block text-sm font-medium">
+            Email *
+          </label>
+          <input
+            id="email"
+            name="email"
+            type="email"
+            required
+            aria-invalid={!!errors.email}
+            aria-describedby={errors.email ? "email-error" : "email-help"}
+            className="mt-1 block w-full rounded-md border-gray-300"
+          />
+          <p id="email-help" className="mt-1 text-sm text-gray-500">
+            We'll never share your email address
+          </p>
+          {errors.email && (
+            <p id="email-error" role="alert" className="mt-1 text-sm text-red-600">
+              {errors.email}
+            </p>
+          )}
+        </div>
+      </fieldset>
+    </form>
+  )
+}
+```
+
+### Keyboard Navigation and Focus Management
+Ensure all interactive elements are keyboard accessible.
+
+```tsx
+// ✅ Good - Keyboard accessible dropdown
+const Dropdown = ({ trigger, children }: Props) => {
+  const [isOpen, setIsOpen] = useState(false)
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
+  
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    switch (e.key) {
+      case 'Escape':
+        setIsOpen(false)
+        triggerRef.current?.focus()
+        break
+      case 'ArrowDown':
+        e.preventDefault()
+        if (!isOpen) {
+          setIsOpen(true)
+        }
+        // Focus first menu item
+        const firstItem = menuRef.current?.querySelector('[role="menuitem"]') as HTMLElement
+        firstItem?.focus()
+        break
+      case 'ArrowUp':
+        e.preventDefault()
+        // Focus last menu item
+        const items = menuRef.current?.querySelectorAll('[role="menuitem"]')
+        const lastItem = items?.[items.length - 1] as HTMLElement
+        lastItem?.focus()
+        break
+    }
+  }
+  
+  return (
+    <div className="relative">
+      <button
+        ref={triggerRef}
+        onClick={() => setIsOpen(!isOpen)}
+        onKeyDown={handleKeyDown}
+        aria-expanded={isOpen}
+        aria-haspopup="menu"
+        className="px-4 py-2 bg-blue-600 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+      >
+        {trigger}
+      </button>
+      
+      {isOpen && (
+        <div
+          ref={menuRef}
+          role="menu"
+          className="absolute top-full left-0 mt-1 bg-white border rounded-md shadow-lg z-10"
+          onKeyDown={handleKeyDown}
+        >
+          {children}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ✅ Good - Accessible menu item
+const MenuItem = ({ children, onClick }: Props) => {
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault()
+      onClick()
+    }
+  }
+  
+  return (
+    <div
+      role="menuitem"
+      tabIndex={0}
+      onClick={onClick}
+      onKeyDown={handleKeyDown}
+      className="px-4 py-2 hover:bg-gray-100 focus:bg-gray-100 focus:outline-none cursor-pointer"
+    >
+      {children}
+    </div>
+  )
+}
+```
+
+### Screen Reader Support
+Provide proper labels and descriptions for screen readers.
+
+```tsx
+// ✅ Good - Screen reader friendly components
+const LoadingSpinner = ({ 
+  size = 'md', 
+  label = 'Loading...' 
+}: Props) => (
+  <div
+    role="status"
+    aria-label={label}
+    className={`inline-block animate-spin rounded-full border-2 border-gray-300 border-t-blue-600 ${
+      size === 'sm' ? 'h-4 w-4' : size === 'lg' ? 'h-8 w-8' : 'h-6 w-6'
+    }`}
+  >
+    <span className="sr-only">{label}</span>
+  </div>
+)
+
+// ✅ Good - Accessible data table
+const DataTable = ({ data, columns }: Props) => (
+  <div className="overflow-x-auto">
+    <table className="min-w-full divide-y divide-gray-200">
+      <caption className="sr-only">
+        User data table with {data.length} rows and {columns.length} columns
+      </caption>
+      <thead className="bg-gray-50">
+        <tr>
+          {columns.map((column) => (
+            <th
+              key={column.key}
+              scope="col"
+              className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+            >
+              {column.header}
+              {column.sortable && (
+                <button
+                  onClick={() => handleSort(column.key)}
+                  aria-label={`Sort by ${column.header}`}
+                  className="ml-1 text-gray-400 hover:text-gray-600"
+                >
+                  ↕
+                </button>
+              )}
+            </th>
+          ))}
+        </tr>
+      </thead>
+      <tbody className="bg-white divide-y divide-gray-200">
+        {data.map((row, index) => (
+          <tr key={row.id}>
+            {columns.map((column) => (
+              <td
+                key={column.key}
+                className="px-6 py-4 whitespace-nowrap text-sm text-gray-900"
+              >
+                {row[column.key]}
+              </td>
+            ))}
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+)
+
+// ✅ Good - Accessible modal with focus trap
+const Modal = ({ isOpen, onClose, title, children }: Props) => {
+  const modalRef = useRef<HTMLDivElement>(null)
+  const previousFocusRef = useRef<HTMLElement | null>(null)
+  
+  useEffect(() => {
+    if (isOpen) {
+      previousFocusRef.current = document.activeElement as HTMLElement
+      modalRef.current?.focus()
+    } else {
+      previousFocusRef.current?.focus()
+    }
+  }, [isOpen])
+  
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      onClose()
+    }
+  }
+  
+  if (!isOpen) return null
+  
+  return (
+    <div
+      className="fixed inset-0 z-50 overflow-y-auto"
+      aria-labelledby="modal-title"
+      role="dialog"
+      aria-modal="true"
+    >
+      <div className="flex items-center justify-center min-h-screen px-4">
+        <div
+          className="fixed inset-0 bg-black opacity-50"
+          onClick={onClose}
+          aria-hidden="true"
+        />
+        
+        <div
+          ref={modalRef}
+          className="relative bg-white rounded-lg shadow-xl max-w-md w-full p-6"
+          onKeyDown={handleKeyDown}
+          tabIndex={-1}
+        >
+          <div className="flex items-center justify-between mb-4">
+            <h2 id="modal-title" className="text-lg font-semibold">
+              {title}
+            </h2>
+            <button
+              onClick={onClose}
+              aria-label="Close modal"
+              className="text-gray-400 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded"
+            >
+              ✕
+            </button>
+          </div>
+          {children}
+        </div>
+      </div>
+    </div>
+  )
+}
+```
+
+### Color and Contrast
+Ensure sufficient color contrast and don't rely solely on color.
+
+```tsx
+// ✅ Good - Accessible status indicators
+const StatusBadge = ({ status, children }: Props) => {
+  const statusConfig = {
+    success: {
+      className: "bg-green-100 text-green-800 border-green-200",
+      icon: "✓",
+      ariaLabel: "Success"
+    },
+    warning: {
+      className: "bg-yellow-100 text-yellow-800 border-yellow-200", 
+      icon: "⚠",
+      ariaLabel: "Warning"
+    },
+    error: {
+      className: "bg-red-100 text-red-800 border-red-200",
+      icon: "✗",
+      ariaLabel: "Error"
+    }
+  }
+  
+  const config = statusConfig[status]
+  
+  return (
+    <span
+      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${config.className}`}
+      aria-label={config.ariaLabel}
+    >
+      <span aria-hidden="true" className="mr-1">
+        {config.icon}
+      </span>
+      {children}
+    </span>
+  )
+}
+
+// ✅ Good - High contrast focus indicators
+const Button = ({ variant = 'primary', children, ...props }: Props) => {
+  const baseClasses = "inline-flex items-center px-4 py-2 rounded-md font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2"
+  
+  const variantClasses = {
+    primary: "bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500",
+    secondary: "bg-gray-200 text-gray-900 hover:bg-gray-300 focus:ring-gray-500"
+  }
+  
+  return (
+    <button
+      className={`${baseClasses} ${variantClasses[variant]}`}
+      {...props}
+    >
+      {children}
+    </button>
+  )
+}
+```
